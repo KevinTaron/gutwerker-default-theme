@@ -28,6 +28,7 @@ import path from 'path';
 import gulp from 'gulp';
 import del from 'del';
 import runSequence from 'run-sequence';
+import browserSync from 'browser-sync';
 import swPrecache from 'sw-precache';
 import gulpLoadPlugins from 'gulp-load-plugins';
 import {output as pagespeed} from 'psi';
@@ -38,10 +39,8 @@ var sassPaths = [
   'bower_components/motion-ui/src'
 ];
 
-var livereload = require('gulp-livereload');
-
 const $ = gulpLoadPlugins();
-
+const reload = browserSync.reload;
 
 // Lint JavaScript
 gulp.task('lint', () =>
@@ -59,7 +58,6 @@ gulp.task('images', () =>
       interlaced: true
     })))
     .pipe(gulp.dest('images'))
-    .pipe(livereload())
     .pipe($.size({title: 'images'}))
 );
 
@@ -79,8 +77,7 @@ gulp.task('styles', function() {
     .pipe($.if('*.css', $.cssnano()))
     .pipe($.size({title: 'styles'}))
     .pipe($.sourcemaps.write('./'))
-    .pipe(gulp.dest('css'))
-    .pipe(livereload());
+    .pipe(gulp.dest('css'));
 });
 
 // Concatenate and minify JavaScript. Optionally transpiles ES2015 code to ES5.
@@ -105,7 +102,6 @@ gulp.task('scripts', () =>
       .pipe($.size({title: 'scripts'}))
       .pipe($.sourcemaps.write('.'))
       .pipe(gulp.dest('js'))
-      .pipe(livereload())
 );
 
 // Clean output directory
@@ -120,13 +116,23 @@ gulp.task('default', ['clean'], cb =>
   )
 );
 
-// Watch files for changes
+// Watch files for changes & reload
 gulp.task('serve', ['scripts', 'styles'], () => {
-  livereload.listen();
-  gulp.watch(['*.php']);
-  gulp.watch(['scss/**/*.{scss,css}'], ['styles']);
-  gulp.watch(['scripts/**/*.js'], ['lint', 'scripts']);
-  gulp.watch(['images/**/*']);
+  browserSync({
+    notify: false,
+    // Customize the Browsersync console logging prefix
+    logPrefix: 'WSK',
+    https: true,
+    proxy: 'https://gutwerker.de/',
+    host: 'gutwerker.de',
+    open: 'external',
+    port: 80
+  });
+
+  gulp.watch(['app/**/*.html'], reload);
+  gulp.watch(['app/styles/**/*.{scss,css}'], ['styles', reload]);
+  gulp.watch(['app/scripts/**/*.js'], ['lint', 'scripts', reload]);
+  gulp.watch(['app/images/**/*'], reload);
 });
 
 // Run PageSpeed Insights
