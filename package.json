@@ -1,0 +1,10 @@
+{
+	"name": "gutwerker-default-theme",
+	"version": "1.0.0",
+	"description": "Basic theme for a new Wordpress Site.",
+	"main": "gulpfile.js",
+	"repository": {
+		"type": "git",
+		"url": ""
+	}
+}
