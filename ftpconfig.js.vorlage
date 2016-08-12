@@ -1,0 +1,9 @@
+var config = {
+    host: 'kevintaron.com',
+    user: 'w0133917',
+    pass: 'Mgzr4SdCymAf',
+    port: 21,
+    remoteFolder: '/kevintaron',
+    localFilesGlob: ['./**/*', '!node_modules/**', '!bower_components/**', '!.tmp/**', '!.git/**', '!ftpconfig.js', '!sftp-config.json']
+};
+exports.config = config;
