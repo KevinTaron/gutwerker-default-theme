@@ -34,17 +34,27 @@ import gulpLoadPlugins from 'gulp-load-plugins';
 import {output as pagespeed} from 'psi';
 import pkg from './package.json';
 
+/** Wordpresse Base Configuration **/
+var baseconfig = require('./baseconfig.js');
+
 var sassPaths = [
   'bower_components/foundation-sites/scss',
   'bower_components/motion-ui/src'
 ];
+
+/** FTP Configuration **/
+var gulpftp = require('./ftpconfig.js');
+
+
+var gutil = require( 'gulp-util' );  
+var ftp = require( 'vinyl-ftp' );
 
 const $ = gulpLoadPlugins();
 const reload = browserSync.reload;
 
 // Lint JavaScript
 gulp.task('lint', () =>
-  gulp.src('scripts/*.js')
+  gulp.src(baseconfig.config.themeurl + 'scripts/*.js')
     .pipe($.eslint())
     .pipe($.eslint.format())
     .pipe($.if(!browserSync.active, $.eslint.failOnError()))
@@ -52,18 +62,18 @@ gulp.task('lint', () =>
 
 // Optimize images
 gulp.task('images', () =>
-  gulp.src('imgs/**/*')
+  gulp.src(baseconfig.config.themeurl + 'imgs/**/*')
     .pipe($.cache($.imagemin({
       progressive: true,
       interlaced: true
     })))
-    .pipe(gulp.dest('images'))
+    .pipe(gulp.dest(baseconfig.config.themeurl + 'images'))
     .pipe($.size({title: 'images'}))
 );
 
 // Compile and automatically prefix stylesheets
 gulp.task('styles', function() {
-  return gulp.src('scss/app.scss')
+  return gulp.src(baseconfig.config.themeurl + 'scss/app.scss')
     .pipe($.sourcemaps.init())
     .pipe($.sass({
       includePaths: sassPaths,
@@ -77,7 +87,7 @@ gulp.task('styles', function() {
     .pipe($.if('*.css', $.cssnano()))
     .pipe($.size({title: 'styles'}))
     .pipe($.sourcemaps.write('./'))
-    .pipe(gulp.dest('css'));
+    .pipe(gulp.dest(baseconfig.config.themeurl + 'css'));
 });
 
 // Concatenate and minify JavaScript. Optionally transpiles ES2015 code to ES5.
@@ -88,7 +98,7 @@ gulp.task('scripts', () =>
       // Note: Since we are not using useref in the scripts build pipeline,
       //       you need to explicitly list your scripts here in the right order
       //       to be correctly concatenated
-      './scripts/app.js'
+      baseconfig.config.themeurl + 'scripts/app.js'
       // Other scripts
     ])
       .pipe($.newer('.tmp/scripts'))
@@ -101,7 +111,7 @@ gulp.task('scripts', () =>
       // Output files
       .pipe($.size({title: 'scripts'}))
       .pipe($.sourcemaps.write('.'))
-      .pipe(gulp.dest('js'))
+      .pipe(gulp.dest(baseconfig.config.themeurl + 'js'))
 );
 
 // Clean output directory
@@ -129,19 +139,69 @@ gulp.task('serve', ['scripts', 'styles'], () => {
     port: 80
   });
 
-  gulp.watch(['app/**/*.html'], reload);
-  gulp.watch(['app/styles/**/*.{scss,css}'], ['styles', reload]);
-  gulp.watch(['app/scripts/**/*.js'], ['lint', 'scripts', reload]);
-  gulp.watch(['app/images/**/*'], reload);
+  // gulp.watch(['app/**/*.html'], reload);
+  // gulp.watch(['app/styles/**/*.{scss,css}'], ['styles', reload]);
+  // gulp.watch(['app/scripts/**/*.js'], ['lint', 'scripts', reload]);
+  // gulp.watch(['app/images/**/*'], reload);
 });
 
 // Run PageSpeed Insights
 gulp.task('pagespeed', cb =>
   // Update the below URL to the public URL of your site
-  pagespeed('example.com', {
+  pagespeed(baseconfig.config.host, {
     strategy: 'mobile'
     // By default we use the PageSpeed Insights free (no API key) tier.
     // Use a Google Developer API key if you have one: http://goo.gl/RkN0vE
     // key: 'YOUR_API_KEY'
   }, cb)
 );
+
+
+// helper function to build an FTP connection based on our configuration
+function getFtpConnection() {  
+    return ftp.create({
+        host: gulpftp.config.host,
+        port: gulpftp.config.port,
+        user: gulpftp.config.user,
+        password: gulpftp.config.pass,
+        parallel: 5,
+        log: gutil.log
+    });
+}
+
+/**
+ * Deploy task.
+ * Copies the new files to the server
+ *
+ * Usage: `FTP_USER=someuser FTP_PWD=somepwd gulp ftp-deploy`
+ */
+gulp.task('ftp-deploy', function() {
+
+    var conn = getFtpConnection();
+
+    return gulp.src(gulpftp.config.localFilesGlob, { base: '.', buffer: false })
+        .pipe( conn.newer( gulpftp.config.remoteFolder ) ) // only upload newer files 
+        .pipe( conn.dest( gulpftp.config.remoteFolder ) )
+    ;
+});
+
+/**
+ * Watch deploy task.
+ * Watches the local copy for changes and copies the new files to the server whenever an update is detected
+ *
+ * Usage: `FTP_USER=someuser FTP_PWD=somepwd gulp ftp-deploy-watch`
+ */
+gulp.task('ftp-deploy-watch', function() {
+
+    var conn = getFtpConnection();
+
+    gulp.watch(gulpftp.config.localFilesGlob)
+    .on('change', function(event) {
+      console.log('Changes detected! Uploading file "' + event.path + '", ' + event.type);
+
+      return gulp.src( [event.path], { base: '.', buffer: false } )
+        .pipe( conn.newer( gulpftp.config.remoteFolder ) ) // only upload newer files 
+        .pipe( conn.dest( gulpftp.config.remoteFolder ) )
+      ;
+    });
+});
