@@ -3,7 +3,7 @@ var config = {
     user: 'username',
     pass: 'password',
     port: 21,
-    remoteFolder: '/kevintaron',
+    remoteFolder: '/',
     localFilesGlob: ['./**/*', '!node_modules/**', '!bower_components/**', '!.tmp/**', '!.git/**', '!ftpconfig.js', '!sftp-config.json']
 };
 exports.config = config;
